@@ -1,59 +1,46 @@
 import streamlit as st
 import cv2
 import numpy as np
-from io import BytesIO
+from sklearn.cluster import KMeans
+from PIL import Image
 
-# Function to cartoonify an image
-def cartoonify_image(image):
-    # Convert the image to an OpenCV format
-    img = np.array(image)
-    img = img[:, :, ::-1].copy()  # Convert RGB to BGR
-    
-    # Step 1: Resize the image for better performance (optional)
-    img = cv2.resize(img, (800, 600))
+# Set up Streamlit title and description
+st.title('Image Processing with K-Means and Edge Detection')
+st.write('Upload an image to perform edge detection and color reduction using K-Means clustering.')
 
-    # Step 2: Convert the image to gray scale
-    gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-
-    # Step 3: Apply a median blur to smooth the image
-    gray = cv2.medianBlur(gray, 5)
-
-    # Step 4: Detect edges using adaptive thresholding
-    edges = cv2.adaptiveThreshold(gray, 255, cv2.ADAPTIVE_THRESH_MEAN_C,
-                                  cv2.THRESH_BINARY, 9, 9)
-
-    # Step 5: Apply bilateral filter for smoothening
-    color = cv2.bilateralFilter(img, 9, 300, 300)
-
-    # Step 6: Combine the edges and the smoothed image
-    cartoon = cv2.bitwise_and(color, color, mask=edges)
-
-    return cartoon
-
-# Streamlit app UI
-st.title("Cartoonify Your Image")
-
-st.write("Upload an image and see it turned into a cartoon!")
-
-# File uploader
-uploaded_file = st.file_uploader("Choose an image...", type="jpg")
+# Upload image section
+uploaded_file = st.file_uploader("Choose an image...", type=["jpg", "jpeg", "png"])
 
 if uploaded_file is not None:
-    # Read the image file
-    image = st.image(uploaded_file)
+    # Read image
+    img = Image.open(uploaded_file)
+    img = np.array(img)
+    img = cv2.cvtColor(img, cv2.COLOR_RGB2BGR)
 
-    # Convert the uploaded image to a format suitable for cartoonification
-    img_bytes = uploaded_file.read()
-    img = np.array(bytearray(img_bytes), dtype=np.uint8)
-    img = cv2.imdecode(img, 1)
+    # Display the original image
+    img_rgb = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)  # Convert back to RGB for correct display
+    st.image(img_rgb, caption='Original Image', use_column_width=True)
 
-    # Call the cartoonify function
-    cartoon_image = cartoonify_image(img)
+    # Perform edge detection
+    line_size = 7
+    blur_value = 7
 
-    # Display the cartoonified image
-    st.image(cartoon_image, caption="Cartoonified Image", use_column_width=True)
+    gray_img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+    gray_blur = cv2.medianBlur(gray_img, blur_value)
+    edges = cv2.adaptiveThreshold(gray_blur, 255, cv2.ADAPTIVE_THRESH_MEAN_C, cv2.THRESH_BINARY, line_size, blur_value)
 
-    # Save the cartoon image if needed
-    output_path = "cartoonified_image.jpg"
-    cv2.imwrite(output_path, cartoon_image)
-    st.write(f"Cartoonified image saved as {output_path}")
+    # st.image(edges, caption='Edge Detection', use_column_width=True, channels='GRAY')
+
+    # Perform K-Means color clustering
+    k = 7
+    data = img.reshape(-1, 3)
+
+    kmeans = KMeans(n_clusters=k, random_state=42).fit(data)
+    img_reduced = kmeans.cluster_centers_[kmeans.labels_]
+    img_reduced = img_reduced.reshape(img.shape)
+    img_reduced = img_reduced.astype(np.uint8)
+
+    img_reduced_rgb = cv2.cvtColor(img_reduced, cv2.COLOR_BGR2RGB)  # Convert back to RGB for correct display
+    st.image(img_reduced_rgb, caption='Color Reduced Image (K-Means)', use_column_width=True)
+
+# To run the app, save this as `app.py` and use the command `streamlit run app.py` in your terminal.
