@@ -44,3 +44,4 @@ if uploaded_file is not None:
     st.image(img_reduced_rgb, caption='Color Reduced Image (K-Means)', use_column_width=True)
 
 # To run the app, save this as `app.py` and use the command `streamlit run app.py` in your terminal.
+#.\myenv\Scripts\activate 
